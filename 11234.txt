@@ -1,0 +1,150 @@
+import streamlit as st
+import google.generativeai as genai
+from PIL import Image
+
+# ==========================================
+# 1. 系統初始化與 API 設定
+# ==========================================
+st.set_page_config(page_title="全通路爆款變現引擎", page_icon="🔥", layout="wide")
+
+st.title("🔥 全通路爆款變現引擎 (FB / IG / Threads)")
+st.markdown("結合故事行銷邏輯，一鍵產出三大平台專屬流量文案！")
+
+# 讓使用者輸入 API Key
+api_key = st.sidebar.text_input("請輸入您的 Gemini API Key", type="password")
+
+# 初始化記憶庫 (用來存放分析過的爆款邏輯)
+if "memory_bank" not in st.session_state:
+    st.session_state.memory_bank = []
+
+# ==========================================
+# 2. 側邊欄：功能選單
+# ==========================================
+menu = st.sidebar.radio("請選擇核心功能：", ["✍️ 三大平台文案齊發", "🧬 自我進化爆款庫 (上傳截圖)"])
+
+if api_key:
+    genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-1.5-pro')
+else:
+    st.warning("👈 請先在左側輸入 API Key 才能啟動引擎喔！")
+    st.stop()
+
+# ==========================================
+# 3. 功能一：三大平台文案齊發
+# ==========================================
+if menu == "✍️ 三大平台文案齊發":
+    st.header("✍️ 一鍵生成：臉書 x IG x 脆")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        topic = st.text_input("🎯 變現項目或主題 (例如：如何用 AI 系統讓業績翻倍)：")
+    with col2:
+        target_audience = st.text_input("👥 目標受眾 (例如：想轉型做講師的實體店老闆)：")
+    
+    if st.button("🚀 啟動全通路爆款引擎"):
+        if topic and target_audience:
+            with st.spinner("大腦正在高速運算中，為您量身打造三大平台文案..."):
+                # 參考過往記憶
+                memory_context = ""
+                if st.session_state.memory_bank:
+                    memory_context = "\n\n【核心參考記憶】：以下是你最近分析過的爆款文案邏輯，請將這些成功元素的底層邏輯融入這次的撰寫中：\n"
+                    for i, logic in enumerate(st.session_state.memory_bank[-5:]):
+                        memory_context += f"- 記憶 {i+1}: {logic}\n"
+
+                # 神級 Prompt：一次要求三種風格
+                prompt = f"""
+                你現在是一位頂尖的「AI 網路行銷導師」與文案大師，擅長用故事行銷與痛點轉折來變現。
+                請針對以下主題與受眾，一次寫出三個平台 (Facebook, Instagram, Threads) 的專屬爆款文案。
+                
+                主題：{topic}
+                目標受眾：{target_audience} {memory_context}
+                
+                請嚴格依照以下平台特性，分段輸出內容：
+
+                ### 【Facebook 爆款版本】(著重：故事行銷、深度共鳴、長文轉折)
+                - 提供 1 個痛點強烈的長文標題。
+                - 運用「從低谷到翻轉」的故事行銷框架，字數約 300-500 字。
+                - 段落必須分明（多用空行），易於手機閱讀。
+                - 結尾提供明確的互動或導購行動呼籲 (CTA)。
+
+                ### 【Instagram 爆款版本】(著重：視覺想像、重點條列、精緻感)
+                - 提供 1 個首圖的大標題建議 (適合放在 IG 圖片上的吸睛文字)。
+                - 內文需精簡扼要，使用 Emoji 增加活潑感。
+                - 將核心價值提煉成 3-4 點的「重點條列」。
+                - 結尾加上 5-8 個高流量的精準 Hashtag。
+                - 附上 3 張「圖片畫面建議」(告訴使用者這篇 IG 貼文該配什麼圖，例如：專業西裝照、對比圖等)。
+
+                ### 【Threads (脆) 爆款版本】(著重：反差感、真實碎碎念、極短互動)
+                - 提供 3 種不同的「破題開頭 (Hook)」(標示為 A、B、C)，製造強烈反差或打破迷思。
+                - 內文極短，單刀直入，不說廢話，語氣要像是平常講話一樣真實。
+                - 結尾必須留一個「引發強烈討論或爭議」的問句，誘使用戶留言。
+                """
+                
+                response = model.generate_content(prompt)
+                
+                # 將產生的文字根據標題進行簡單的切割，以便放入不同 Tab (這裡使用字串尋找來切割)
+                full_text = response.text
+                
+                try:
+                    # 簡易切分邏輯
+                    fb_part = full_text.split("### 【Facebook 爆款版本】")[1].split("### 【Instagram")[0]
+                    ig_part = full_text.split("### 【Instagram 爆款版本】")[1].split("### 【Threads")[0]
+                    threads_part = full_text.split("### 【Threads (脆) 爆款版本】")[1]
+                    
+                    st.success("✨ 恭喜！三大平台專屬文案生成完畢！請點擊下方標籤切換查看：")
+                    
+                    # 使用 Streamlit 的 Tabs 功能做出漂亮的切換介面
+                    tab1, tab2, tab3 = st.tabs(["📘 Facebook 版本", "📸 Instagram 版本", "🧵 Threads (脆) 版本"])
+                    
+                    with tab1:
+                        st.markdown(fb_part)
+                        st.button("複製 FB 文案", key="copy_fb") # 視覺按鈕，實際複製靠反白
+                    with tab2:
+                        st.markdown(ig_part)
+                    with tab3:
+                        st.markdown(threads_part)
+                        
+                except Exception as e:
+                    # 如果 AI 沒有乖乖照格式輸出，就直接顯示全文
+                    st.success("✨ 生成完畢！")
+                    st.markdown(full_text)
+        else:
+            st.error("請完整輸入「主題」與「受眾」！")
+
+# ==========================================
+# 4. 功能二：自我進化爆款庫 (與之前相同)
+# ==========================================
+elif menu == "🧬 自我進化爆款庫 (上傳截圖)":
+    st.header("🧬 自我進化爆款庫")
+    st.markdown("看到別人的高流量文案？截圖傳上來，讓系統幫您拆解邏輯並存入記憶！")
+    
+    uploaded_file = st.file_uploader("上傳文案截圖 (支援 PNG, JPG)", type=["png", "jpg", "jpeg"])
+    
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+        st.image(image, caption="已上傳的截圖", use_container_width=True)
+        
+        if st.button("分析並存入進化庫 🧠"):
+            with st.spinner("正在用視覺模型拆解爆款密碼..."):
+                prompt = """
+                請分析這張圖片中的社群文案。提取出這篇文案之所以高流量的「底層邏輯」。
+                請簡短總結：
+                1. 開頭鉤子用了什麼心理學技巧？
+                2. 內文的情緒轉折是如何鋪陳的？
+                3. 給我一段 100 字以內的「風格指令」，以便我下次生成文案時可以模仿。
+                """
+                vision_model = genai.GenerativeModel('gemini-1.5-pro')
+                response = vision_model.generate_content([prompt, image])
+                
+                st.success("✅ 分析完成！已將此邏輯存入系統記憶庫，下次產出文案時將自動融合此威力。")
+                st.markdown("### 🔍 拆解結果：")
+                st.markdown(response.text)
+                
+                st.session_state.memory_bank.append(response.text)
+                
+    st.markdown("---")
+    st.subheader("📚 系統目前已學習的爆款邏輯數量：" + str(len(st.session_state.memory_bank)))
+    if st.session_state.memory_bank:
+        with st.expander("查看已學習的底層邏輯"):
+            for i, logic in enumerate(st.session_state.memory_bank):
+                st.write(f"**【高轉換邏輯 {i+1}】**\n{logic}")
