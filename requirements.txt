@@ -1,0 +1,10 @@
+# 文案引擎
+streamlit
+google-generativeai
+pillow
+
+# 剪片工具
+moviepy>=2               # 用 Python 剪接、合併、加文字
+imageio-ffmpeg           # moviepy 內建的 ffmpeg 備援
+faster-whisper           # 語音轉字幕（自動上字幕）
+opencc-python-reimplemented  # 字幕簡轉繁（台灣用語）
